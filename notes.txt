@@ -1,0 +1,92 @@
+Euromonitor Data Engineer Scraping Test
+=========================================
+
+Overview
+--------
+This repository implements both exercises in Python.
+
+Exercise 1: Glossier
+- Collection: https://www.glossier.com/en-in/collections/all
+- US market: https://www.glossier.com/en-us/collections/all
+- The scraper uses the public Shopify collection JSON endpoint to enumerate
+  products and the corresponding public product JSON endpoint for product
+  detail data.
+- No browser automation is required for this approach.
+- The base output contains one row per catalog product.
+- The optional --variants flag creates one row per Shopify variant and uses
+  the variant ID as product_id.
+- Images are stored in the CSV as a JSON-encoded array of strings.
+- scraped_at is one UTC ISO-8601 timestamp for the run.
+
+Exercise 2: Cellarbrations
+- Category:
+  https://www.cellarbrations.com.au/sm/delivery/rsid/144981/categories/spirits/whisky-id-Whisky_Food
+- The supplied category path without the hyphen before `Whisky_Food` returns
+  an empty category; the hyphenated path is the working listing route.
+- Product cards are read from the category page's embedded
+  `window.__PRELOADED_STATE__` data; product details come from the storefront
+  JSON API.
+- Requests use `curl_cffi` Chrome impersonation and do not hard-code browser
+  cookie values or session tokens. The store ID comes from the category URL
+  and is also used for product API requests.
+- Product IDs use the API SKU, and `measuring_unit` / `units` come from the
+  API's `unitsOfSize` field.
+- Images are stored as a JSON-encoded array of URL strings.
+- The CSV also includes the product description, as required by Task 3.
+- `scraped_at` is a UTC ISO-8601 timestamp recorded when each product row is
+  created.
+
+Browser-rendering decision for Cellarbrations
+---------------------------------------------
+Evidence observed during development:
+Direct HTTP requests returned the category HTML with product IDs and card data,
+and the storefront JSON API returned product details. No browser is launched
+and no page assets are loaded. Recheck these responses if the site changes or
+the scraper stops finding products.
+
+Tradeoff:
+- Direct HTTP is considerably lighter and simpler for a finite catalog scrape.
+- Browser rendering would be more tolerant of changes that move required data
+  behind client-side JavaScript, but would be slower and more resource-intensive.
+- I would switch to browser rendering if the required product links/data
+  stopped appearing in the initial HTML responses, or if a required field
+  became available only after JavaScript execution and the site permits that
+  access.
+
+Reliability decisions
+---------------------
+- HTTP requests have explicit timeouts.
+- Both scripts raise an error if the collection is empty or expected category
+  data is missing. Glossier skips individual products whose detail requests
+  fail; Cellarbrations product API errors stop the scrape.
+- A small delay is inserted between requests to avoid unnecessarily aggressive
+  traffic.
+- The scripts do not hard-code the number of products; they follow the live
+  catalog.
+
+Assumptions
+-----------
+- The public storefront endpoints/pages are the intended source.
+- The assignment's "unique product id" maps to the site's Shopify product ID
+  for the base Glossier output and the storefront SKU for Cellarbrations.
+- For Glossier's non-variant output, the first listed variant supplies the
+  product price. The optional variant mode treats every variant separately.
+- The `image` CSV field contains a JSON-encoded array of image URL strings.
+- Timestamps use UTC. Glossier uses one timestamp for the run; Cellarbrations
+  records a timestamp as each product row is created.
+
+AI usage disclosure
+-------------------
+AI (ChatGPT) was used during development to:
+- research the public site structure and likely storefront endpoints;
+- propose a simple requests/BeautifulSoup architecture;
+- draft initial Python boilerplate, parsing logic and documentation;
+- identify edge cases such as variants, locale handling and unit parsing.
+
+The submitted code should be manually reviewed and modified by the candidate
+before submission. Manual review is important for selector validation,
+site-specific assumptions, error handling and ensuring the candidate can
+explain every part of the implementation during a follow-up discussion.
+
+Before submitting, update this section so it accurately reflects your actual
+AI usage and your own manual changes.
